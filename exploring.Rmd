@@ -1,0 +1,43 @@
+---
+title: "Exploring rossmann store sales"
+author: "NighTurs"
+date: "November 5, 2015"
+output: html_document
+---
+
+The website for this competition is https://www.kaggle.com/c/rossmann-store-sales
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+library(ggplot2)
+library(data.table)
+set.seed(294)
+```
+
+Read data
+
+```{r warning=FALSE, message=FALSE}
+data <- fread("data/train.csv", head = T, sep = ',')
+row_count <- nrow(data)
+col_count <- ncol(data)
+cat("Row count : ", row_count, "; Columns count : ", col_count)
+```
+
+Are there NA's?
+```{r warning=FALSE, message=FALSE}
+length(which(is.na(data)))
+```
+
+First glance at columns and values
+
+```{r warning=FALSE, message=FALSE}
+str(data)
+```
+
+A bit of transformations, parse dates, convert to factors
+```{r warning=FALSE, message=FALSE}
+data$Open = factor(data$Open, levels = c(0, 1), labels = c("Closed", "Open"))
+data$Promo = factor(data$Promo, levels = c(0, 1), labels = c("Promo", "None"))
+data$StateHoliday = factor(data$StateHoliday, levels = c("0", "a", "b", "c"), labels = c("None", "Public", "Easter", "Christmas"))
+data$SchoolHoliday = factor(data$SchoolHoliday, levels = c("0", "1"), labels = c("None", "Holiday"))
+date <- strptime(data$Date, "%y-%m-%d")
+```
