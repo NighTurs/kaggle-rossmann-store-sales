@@ -10,21 +10,19 @@ The website for this competition is https://www.kaggle.com/c/rossmann-store-sale
 ```{r echo=FALSE, warning=FALSE, message=FALSE}
 library(ggplot2)
 library(data.table)
+library(plyr)
 set.seed(294)
 ```
 
 Read data
 
 ```{r warning=FALSE, message=FALSE}
-data <- fread("data/train.csv", head = T, sep = ',')
+train <- fread("data/train.csv", head = T, sep = ',')
+stores <- fread("data/store.csv", head = T, sep = ',')
+data <- merge(train, stores, by = "Store")
 row_count <- nrow(data)
 col_count <- ncol(data)
 cat("Row count : ", row_count, "; Columns count : ", col_count)
-```
-
-Are there NA's?
-```{r warning=FALSE, message=FALSE}
-length(which(is.na(data)))
 ```
 
 First glance at columns and values
@@ -36,8 +34,78 @@ str(data)
 A bit of transformations, parse dates, convert to factors
 ```{r warning=FALSE, message=FALSE}
 data$Open = factor(data$Open, levels = c(0, 1), labels = c("Closed", "Open"))
-data$Promo = factor(data$Promo, levels = c(0, 1), labels = c("Promo", "None"))
+data$Promo = factor(data$Promo, levels = c(0, 1), labels = c("None", "Promo"))
 data$StateHoliday = factor(data$StateHoliday, levels = c("0", "a", "b", "c"), labels = c("None", "Public", "Easter", "Christmas"))
 data$SchoolHoliday = factor(data$SchoolHoliday, levels = c("0", "1"), labels = c("None", "Holiday"))
-date <- strptime(data$Date, "%y-%m-%d")
+data$StoreType = factor(data$StoreType, levels = c("c", "a", "d", "b"), labels = c("C", "A", "D", "B"))
+data$Assortment = factor(data$Assortment, levels = c("a", "c", "b"), labels = c("Basic", "Extended", "Extra"))
+data$Promo2 = factor(data$Promo2, levels = c(0, 1), labels = c("None", "Promo"))
+data$PromoInterval = factor(data$PromoInterval, levels = c("", "Jan,Apr,Jul,Oct", "Feb,May,Aug,Nov", "Mar,Jun,Sept,Dec"), labels = c("None", "Jan,Apr,Jul,Oct", "Feb,May,Aug,Nov", "Mar,Jun,Sept,Dec"))
+data$Promo2SinceWeek[is.na(data$Promo2SinceWeek)] <- -1
+data$Promo2SinceYear[is.na(data$Promo2SinceYear)] <- -1
+data$CompetitionOpenSinceMonth[is.na(data$CompetitionOpenSinceMonth)] <- -1
+data$CompetitionOpenSinceYear[is.na(data$CompetitionOpenSinceYear)] <- -1
+data$CompetitionDistance[is.na(data$CompetitionDistance)] <- -1
+data$Date = as.Date(data$Date)
+data$DayOfYear = as.integer(format(data$Date, "%j"))
+data$Year = as.integer(format(data$Date, "%Y"))
+```
+
+Are there still any NA's?
+```{r warning=FALSE, message=FALSE}
+length(which(is.na(data)))
+```
+
+Looking at Sales summaries
+```{r warning=FALSE, message=FALSE}
+summary(data$Sales)
+summary(data[data$Open == "Closed", ]$Sales)
+```
+
+Lets remove all rows with store being closed, and also cap Sales by 20000
+```{r warning=FALSE, message=FALSE}
+data <- data[data$Open == "Open" & data$Sales <= 20000]
+data <- data[data$Open == "Open"]
+```
+
+Plot sales
+```{r warning=FALSE, message=FALSE,  fig.width = 10, fig.height = 5}
+ggplot(data) + aes(Sales) + geom_histogram(binwidth = 50, fill = "blue", alpha = 0.5)
+```
+
+Plot how promo affects sales
+```{r warning=FALSE, message=FALSE,  fig.width = 10, fig.height = 5}
+ggplot(data) + aes(Promo, fill = Promo) + geom_bar()
+ggplot(data) + aes(Sales, fill = Promo) + geom_histogram(binwidth = 50, position = "identity", alpha = 0.5)
+```
+
+Store types 
+```{r warning=FALSE, message=FALSE,  fig.width = 10, fig.height = 5}
+ggplot(data) + aes(StoreType, fill = Assortment) + geom_bar()
+
+ggplot(data) + aes(StoreType, Sales, fill = Assortment) + geom_boxplot(outlier.size = 1, outlier.colour = "blue")
+```
+
+Holidays
+```{r warning=FALSE, message=FALSE,  fig.width = 10, fig.height = 5}
+table(data$StateHoliday)
+ggplot(data) + aes(StateHoliday, Sales, fill = StateHoliday) + geom_boxplot(outlier.size = 1, outlier.colour = "blue")
+
+ggplot(data) + aes(SchoolHoliday, fill = SchoolHoliday) + geom_bar()
+ggplot(data) + aes(SchoolHoliday, Sales, fill = SchoolHoliday) + geom_boxplot( outlier.size = 1, outlier.colour = "blue")
+```
+
+How school holidays are distributed throught weekdays?
+```{r warning=FALSE, message=FALSE,  fig.width = 10, fig.height = 5}
+ggplot(data) + aes(as.factor(DayOfWeek), fill = SchoolHoliday) + geom_bar()
+```
+
+Seasonality check
+```{r warning=FALSE, message=FALSE,  fig.width = 10, fig.height = 5}
+ggplot(data) + aes(DayOfYear, Sales, group = Year, colour = as.factor(Year)) + stat_summary(fun.y = median, geom = "line")
+
+ggplot(data) + aes(as.factor(DayOfWeek)) + geom_bar()
+
+ggplot(data) + aes(as.factor(DayOfWeek), Sales) + geom_boxplot( outlier.size = 1, outlier.colour = "blue")
+
 ```
