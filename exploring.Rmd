@@ -62,6 +62,24 @@ Are there still any NA's? (Promo2Date, Promo2Days are expected to have them)
 which(data[,colSums(is.na(data))>0])
 ```
 
+Do we have missing Dates in Stores (Assuming first store has full set of dates)?
+```{r warning=FALSE, message=FALSE}
+byStore <- data[,.N,by = Store]
+byStore[,.N, by = N]
+```
+
+A lot of Stores miss ~200 dates... Let's see what are this dates
+```{r warning=FALSE, message=FALSE}
+full_store <- head(byStore[byStore$N == 942], n = 1)$Store
+miss1_store <- head(byStore[byStore$N == 758], n = 1)$Store
+miss2_store <- head(byStore[byStore$N == 941], n = 1)$Store
+
+miss1_dates <- as.Date(setdiff(data[data$Store == full_store]$Date, data[data$Store == miss1_store]$Date), origin = "1970-01-01")
+head(miss1_dates, n = 10)
+tail(miss1_dates, n = 10)
+as.Date(setdiff(data[data$Store == full_store]$Date, data[data$Store == miss2_store]$Date), origin = "1970-01-01")
+```
+
 Looking at Sales summaries
 ```{r warning=FALSE, message=FALSE}
 summary(data$Sales)
