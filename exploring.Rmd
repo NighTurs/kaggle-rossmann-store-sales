@@ -70,7 +70,9 @@ summary(data[data$Open == "Closed", ]$Sales)
 
 Lets remove all rows with store being closed, and also cap Sales by 20000
 ```{r warning=FALSE, message=FALSE}
-data <- data[data$Open == "Open" & data$Sales <= 20000]
+all_data <- copy(data)
+filtered_data <- data[data$DayOfWeek != 7 & data$Sales <= 20000]
+data <- filtered_data
 ```
 
 Plot sales
@@ -106,13 +108,13 @@ ggplot(data) + aes(as.factor(DayOfWeek), fill = SchoolHoliday) + geom_bar()
 ```
 
 Lets check for seasonality patterns, first only 2014. Can observe almost perfect 2 weeks seasonality, expect some rare cases when this pattern gets interrupted at the end of first week. Vertical lines are start and end of test data for 2015 year.
-```{r warning=FALSE, message=FALSE,  fig.width = 10, fig.height = 5}
-ggplot(data[data$Year == 2014]) + aes(DayOfYear, Sales, group = Year, colour = as.factor(Year)) + stat_summary(fun.y = median, geom = "line") + geom_vline(xintercept = c(213, 260)) + stat_summary(fun.y = median, aes(colour = as.factor(DayOfWeek)), geom = "point", size = 3) + scale_colour_hue("clarity")
+```{r warning=FALSE, message=FALSE,  fig.width = 20, fig.height = 10}
+ggplot(data[data$Year == 2014]) + aes(DayOfYear, Sales, group = Year, colour = as.factor(Year)) + stat_summary(fun.y = median, geom = "line", size = 3) + geom_vline(xintercept = data[data$Year == 2014 & data$DayOfWeek == 1]$DayOfYear, colour = "grey") + stat_summary(fun.y = median, aes(colour = as.factor(DayOfWeek)), geom = "point", size = 5) + scale_colour_hue("clarity") + scale_x_discrete(breaks = data[data$Year == 2014 & data$DayOfWeek == 1]$DayOfYear) + geom_vline(xintercept = c(213, 260))
 ```
 
-There is also seems to be a years pattern, although it is largelly spoiled by incomplete weekly pattern (sometimes it causes differencies between years as can be seen in august)
-```{r warning=FALSE, message=FALSE,  fig.width = 10, fig.height = 5}
-ggplot(data) + aes(DayOfYear, Sales, group = Year, colour = as.factor(Year)) + stat_summary(fun.y = median, geom = "line") + geom_vline(xintercept = c(213, 260)) + stat_summary(fun.y = median, aes(colour = as.factor(DayOfWeek)), geom = "point", size = 3) + scale_colour_hue("clarity")
+There is also seems to be a years pattern, although it is largelly spoiled by incomplete weekly pattern (sometimes it causes differencies between years as can be seen in august) (plotting only Mondays)
+```{r warning=FALSE, message=FALSE,  fig.width = 20, fig.height = 10}
+ggplot(data[data$DayOfWeek == 1]) + aes(DayOfYear, Sales, group = Year, colour = as.factor(Year)) + stat_summary(fun.y = median, geom = "line", size = 3) + geom_vline(xintercept = c(213, 260)) + stat_summary(fun.y = median, aes(colour = as.factor(DayOfWeek)), geom = "point", size = 5) + scale_colour_hue("clarity") + geom_vline(xintercept = data[data$DayOfWeek == 1]$DayOfYear, colour = "grey") + scale_x_discrete(breaks = data[data$Year == 2014 & data$DayOfWeek == 1]$DayOfYear) + theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
 Also lets check sales distribution by weekdays, months and weeks
@@ -139,4 +141,50 @@ ggplot(data) + aes(CompetitionDistance > -1, Sales, fill = CompetitionDistance >
 Are there any stores that got competitor during our observation period?
 ```{r warning=FALSE, message=FALSE}
 which(data[, length(unique(CompetitionDistance)), by = Store][,1] > 1)
+```
+
+Back to seasonality. Lets try to remove all year weeks that spoil our almost perfect 2 week seasonality. For that I will leave only this days for each year (Now each year will also be adjusted by week day):
+2013: 35 - 77, 155 - 266
+2014: 34 - 76, 154 - 208, 216 - 272 (august is crucial to us, so I removed one week and shifted others)
+2015: 35 - 75, 153 - *
+```{r warning=FALSE, message=FALSE,  fig.width = 20, fig.height = 10}
+data <- all_data
+data_cl <- data[((data$Year == 2013 & data$DayOfYear %in% c(35:77, 155:265)) | (data$Year == 2014 & data$DayOfYear %in% c(34:76, 154:208, 216:271)) |
+(data$Year == 2015 & data$DayOfYear %in% c(33:75, 153:212))) & data$DayOfWeek != 7]
+library(plyr)
+data_cl[data_cl$Year == 2013]$DayOfYear <- mapvalues(data_cl[data_cl$Year == 2013]$DayOfYear, from = c(35:77, 155:265), to = 1:154)
+data_cl[data_cl$Year == 2014]$DayOfYear <- mapvalues(data_cl[data_cl$Year == 2014]$DayOfYear, from = c(34:76, 154:208, 216:271), to = 1:154)
+data_cl[data_cl$Year == 2015]$DayOfYear <- mapvalues(data_cl[data_cl$Year == 2015]$DayOfYear, from = c(33:75, 153:212), to = 1:103)
+ggplot(data_cl) + aes(DayOfYear, Sales, group = Year, colour = as.factor(Year)) + stat_summary(fun.y = median, geom = "line", size = 3) + geom_vline(xintercept = c(104, 151)) + stat_summary(fun.y = median, aes(colour = as.factor(DayOfWeek)), geom = "point", size = 5) + scale_colour_hue("clarity") + geom_vline(xintercept = data_cl[data_cl$DayOfWeek == 1]$DayOfYear, colour = "grey") + scale_x_discrete(breaks = data_cl[data_cl$Year == 2014 & data_cl$DayOfWeek == 1]$DayOfYear) + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+Now lets try to forecast 60 days of 2015 year (We already now Sales for them, so we can check how good our predictions are)
+```{r warning=FALSE, message=FALSE,  fig.width = 20, fig.height = 10}
+library(forecast)
+store1 <- data_cl[data_cl$Store == 1]
+N <- 60
+test <- store1[1:N]
+train <- store1[(N + 1):nrow(store1)]
+ts1 <- ts(rev(train$Sales), frequency = 132)
+fit <- stl(ts1, s.window="periodic")
+plot(fit)
+ans <- forecast(fit, h = N)
+plot(ans)
+lines(ts(rev(store1$Sales), frequency = 132), col = "red")
+```
+
+Lets do the same for couple of other stores
+```{r warning=FALSE, message=FALSE,  fig.width = 20, fig.height = 10}
+stores <- c(50, 101, 150, 200)
+for (store in stores) {
+    st <- data_cl[data_cl$Store == store]
+    N <- 60
+    test <- st[1:N]
+    train <- st[(N + 1):nrow(st)]
+    store_ts <- ts(rev(train$Sales), frequency = 132)
+    fit <- stl(store_ts, s.window="periodic")
+    ans <- forecast(fit, h = N)
+    plot(ans)
+    lines(ts(rev(st$Sales), frequency = 132), col = "red")
+}
 ```
