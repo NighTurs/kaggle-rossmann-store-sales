@@ -42,7 +42,6 @@ transform_data <- function(data) {
     data$Promo2Date <- do.call(c, 
                                lapply(tmp, function(d) {as.Date(d, format = "%Y %U %u")}))
     data$Promo2Days <- as.integer(difftime(data$Date, data$Promo2Date, units = "days"))
-    data$LogSales <- log(data$Sales + 1)
     data
 }
 
@@ -50,11 +49,15 @@ save_tidy_data <- function() {
     data <- read_data()
     data <- clean_data(data)
     data <- transform_data(data)
-    write.csv(data, file = "data/data_tidy.csv", row.names = F)
+    data$LogSales <- log(data$Sales + 1)
+    write.csv(data, file = "data/train_tidy.csv", row.names = F)
+    data <- read_data("data/test.csv")
+    data <- clean_data(data)
+    data <- transform_data(data)
+    write.csv(data, file = "data/test_tidy.csv", row.names = F)
 }
 
-load_tidy_data <- function() {
-    data <- fread("data/data_tidy.csv", head = T, sep = ',')
+restore_after_load <- function(data) {
     data$Date = as.Date(data$Date)
     data$Open = as.factor(data$Open)
     data$Promo = as.factor(data$Promo)
@@ -65,6 +68,16 @@ load_tidy_data <- function() {
     data$Promo2 = as.factor(data$Promo2)
     data$PromoInterval = as.factor(data$PromoInterval)
     data
+}
+
+load_tidy_train <- function() {
+    data <- fread("data/train_tidy.csv", head = T, sep = ',')
+    restore_after_load(data)
+}
+
+load_tidy_test <- function() {
+    data <- fread("data/test_tidy.csv", head = T, sep = ',')
+    restore_after_load(data)
 }
 
 

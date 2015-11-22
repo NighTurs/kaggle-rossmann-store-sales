@@ -9,7 +9,7 @@ RMPSE <- function(actual, preds) {
     return(sqrt(mean(((y-y_hat)/y)^2)))
 }
 
-data <- load_tidy_data()
+data <- load_tidy_train()
 cj <- CJ(Store = unique(data$Store), 
    Date = seq(from = as.Date("2013-01-01"), to = as.Date("2015-07-13"), by = "day"))
 data <- data.table(full_join(cj, data))
