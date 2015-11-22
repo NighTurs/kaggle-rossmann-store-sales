@@ -29,16 +29,6 @@ clean_data <- function(data) {
     data$CompetitionOpenSinceYear[is.na(data$CompetitionOpenSinceYear)] <- -1
     data$CompetitionDistance[is.na(data$CompetitionDistance)] <- -1
     data$Date = as.Date(data$Date)
-    
-    
-    
-    data$DayOfYear = as.integer(format(data$Date, "%j"))
-    data$Year = as.integer(format(data$Date, "%Y"))
-    data$Week = as.integer(format(data$Date, "%U"))
-    data$Month = as.integer(format(data$Date, "%m"))
-    tmp <- paste(data$Promo2SinceYear, data$Promo2SinceWeek, rep("1", nrow(data)), sep = " ")
-    data$Promo2Date <- do.call(c, lapply(tmp, function(d) {as.Date(d, format = "%Y %U %u")}))
-    data$Promo2Days <- as.integer(difftime(data$Date, data$Promo2Date, units = "days"))
     data
 }
 
@@ -52,6 +42,7 @@ transform_data <- function(data) {
     data$Promo2Date <- do.call(c, 
                                lapply(tmp, function(d) {as.Date(d, format = "%Y %U %u")}))
     data$Promo2Days <- as.integer(difftime(data$Date, data$Promo2Date, units = "days"))
+    data$LogSales <- log(data$Sales + 1)
     data
 }
 
