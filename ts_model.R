@@ -49,7 +49,7 @@ data_cl$LogSales <- log(data_cl$Sales + 1)
 
 #estimate errors
 
-stores <- unique(data_cl$Store)
+stores <- c(1:10)
 actual <- c()
 preds <- c()
 N <- 60
@@ -63,8 +63,8 @@ for (store in stores) {
     ts1 <- ts(rev(train$LogSales), frequency = 12)
     fit <- stl(ts1, s.window="periodic")
     ans <- forecast(fit, method = "ets", h = N)
-#    plot(ans)
-#    lines(ts(rev(store_dt$LogSales), frequency = 12), col = "red")
+    plot(ans)
+    lines(ts(rev(store_dt$LogSales), frequency = 12), col = "red")
     actual <- c(actual, rev(test$Sales))
     preds <- c(preds, ans$mean)
     print(RMPSE(rev(test$Sales), exp(ans$mean) - 1))
@@ -74,20 +74,22 @@ RMPSE(actual, exp(preds) - 1)
 #make predictions
 
 test <- fread("data/test.csv", sep = ",")
-test <- mutate(test, Data <- as.Date(Data))
+test <- mutate(test, Date = as.Date(Date))
+test <- arrange(test, Date)
 test <- data.table(mutate(test, Sales = 0))
-N <- 41
 
-stores <- unique(data_cl$Store)
+N <- 41 + 6
+
+stores <- unique(test$Store)
 for (store in stores) {
     print(paste("Forecast for store", store, sep = " "))
-    store_dt <- data_cl[Store == store & DayOfWeek != 7]
+    store_dt <- data_cl[Store == store & DayOfWeek != 7,]
     
-    ts1 <- ts(rev(store_dt$LogSales), frequency = 12)
+    ts1 <- ts(rev(store_dt$LogSales), frequency = 132)
     fit <- stl(ts1, s.window="periodic")
     ans <- forecast(fit, method = "ets", h = N)
     test <- mutate(test, Sales = replace(Sales, Store == store & DayOfWeek != 7, 
-                                         exp(ans$mean) - 1))
+                                         exp(tail(ans$mean, 41)) - 1))
     test <- mutate(test, Sales = replace(Sales, Store == store & DayOfWeek == 7, 
                                          mean(data[Store == store & 
                                                           DayOfWeek == 7 & 
@@ -95,5 +97,17 @@ for (store in stores) {
 }
 
 test <- mutate(test, Sales = replace(Sales, Open == 0, 0))
-write.csv(test[,list(Id, Sales)], file = "ts_out.csv", row.names = F)
+write.csv(arrange(test[,list(Id, Sales)], Id), file = "ts_out.csv", row.names = F)
+
+# control check with submission that is known to be reasonable
+
+good <- fread("data/rf1.csv", sep = ",")
+good <- arrange(good, Id)
+RMPSE(good$Sales, arrange(test, Id)$Sales)
+
+w <- merge(test, good, by = "Id")
+
+ggplot(w[DayOfWeek != 7]) + 
+    stat_summary(fun.y = median, geom = "line", size = 1, colour = "red", aes(Date, Sales.x)) +
+    stat_summary(fun.y = median, geom = "line", size = 1, colour = "blue", aes(Date, Sales.y))
 

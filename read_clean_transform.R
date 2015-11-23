@@ -2,7 +2,7 @@ require(data.table)
 require(dplyr)
 
 read_data <- function(file = "data/train.csv") {
-    train <- fread("data/train.csv", head = T, sep = ',')
+    train <- fread(file, head = T, sep = ',')
     stores <- fread("data/store.csv", head = T, sep = ',')
     merge(train, stores, by = "Store")
 }
