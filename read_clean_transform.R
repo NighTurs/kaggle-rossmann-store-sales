@@ -42,6 +42,7 @@ transform_data <- function(data) {
     data$Promo2Date <- do.call(c, 
                                lapply(tmp, function(d) {as.Date(d, format = "%Y %U %u")}))
     data$Promo2Days <- as.integer(difftime(data$Date, data$Promo2Date, units = "days"))
+    data <- mutate(data, Open = replace(Open, is.na(Open), "Open"))
     data
 }
 
