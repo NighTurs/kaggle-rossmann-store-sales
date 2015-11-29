@@ -99,6 +99,12 @@ transform_data_dataset_specific <- function(train, test) {
                     WeekDaySalesLowMedianLog = log(WeekDaySalesLowMedian + 1))
     test <- mutate(test, WeekDaySalesHighMedianLog = log(WeekDaySalesHighMedian + 1), 
                     WeekDaySalesLowMedianLog = log(WeekDaySalesLowMedian + 1))
+    train <- mutate(train, WeekDaySalesHighMedianLog = 
+                        replace(WeekDaySalesHighMedianLog, 
+                                is.na(WeekDaySalesHighMedianLog), -1))
+    test <- mutate(test, WeekDaySalesHighMedianLog = 
+                        replace(WeekDaySalesHighMedianLog, 
+                                is.na(WeekDaySalesHighMedianLog), -1))
     # LogSales for train
     train$LogSales <- log(train$Sales + 1)
     list(train = train, test = test)
