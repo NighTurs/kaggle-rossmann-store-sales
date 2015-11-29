@@ -43,6 +43,8 @@ transform_data <- function(data) {
                                lapply(tmp, function(d) {as.Date(d, format = "%Y %U %u")}))
     data$Promo2Days <- as.integer(difftime(data$Date, data$Promo2Date, units = "days"))
     data <- mutate(data, Open = replace(Open, is.na(Open), "Open"))
+    data <- mutate(data, WeekEven = factor(Week %% 2, levels = c(0, 1), 
+                                             labels = c("Even", "Odd")))
     data
 }
 
@@ -99,6 +101,7 @@ restore_after_load <- function(data) {
     data$Assortment = as.factor(data$Assortment)
     data$Promo2 = as.factor(data$Promo2)
     data$PromoInterval = as.factor(data$PromoInterval)
+    data$WeekEven = as.factor(data$WeekEven)
     data
 }
 
