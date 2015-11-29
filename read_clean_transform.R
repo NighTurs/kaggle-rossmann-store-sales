@@ -51,7 +51,27 @@ transform_data <- function(data) {
                                                       data$Promo2SinceWeek, 
                                                       rep("1", nrow(data)), 
                                                       sep = "-"), "%Y %U %u")))
-    data$Promo2Days <- as.integer(difftime(data$Date, data$Promo2Date, units = "days"))
+    #add Promo2Days
+    data <- data %>% mutate(Promo2Days =
+                                as.integer(difftime(Date, Promo2Date, units = "days"))) %>%
+        mutate(Promo2Days = replace(Promo2Days, is.na(Promo2Days) | Promo2Days < 0, -1))
+    #add Promo2Started
+    data <- data %>% mutate(Promo2Started = factor(Date >= Promo2Date, levels = c(T, F), 
+                                                   labels = c("Started", "Not"))) %>%
+        mutate(Promo2Started = replace(Promo2Started, is.na(Promo2Started), "Not"))
+    #add CompetitionOpenDays
+    data <- data %>% mutate(CompetitionOpenDays = 
+                                as.integer(difftime(Date, 
+                                                    CompetitionOpenSinceDate, 
+                                                    units = "days"))) %>%
+        mutate(CompetitionOpenDays = replace(CompetitionOpenDays, 
+                                             is.na(CompetitionOpenDays) | CompetitionOpenDays < 0, 
+                                             -1))
+    #add CompetitionOpen
+    data <- data %>% mutate(CompetitionOpen = factor(Date >= CompetitionOpenSinceDate, 
+                                                     levels = c(T, F), 
+                                                     labels = c("Open", "Not"))) %>%
+        mutate(CompetitionOpen = replace(CompetitionOpen, is.na(CompetitionOpen), "Not"))
     data
 }
 
@@ -109,6 +129,8 @@ restore_after_load <- function(data) {
     data$Promo2 = as.factor(data$Promo2)
     data$PromoInterval = as.factor(data$PromoInterval)
     data$WeekEven = as.factor(data$WeekEven)
+    data$CompetitionOpen = as.factor(data$CompetitionOpen)
+    data$Promo2Started = as.factor(data$Promo2Started)
     data
 }
 
