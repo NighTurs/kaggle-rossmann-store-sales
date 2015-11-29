@@ -18,7 +18,8 @@ features <- c("Store", "DayOfWeek", "Promo", "StoreType", "Assortment",
               "DayOfYear", "Year", "Week", "Month", "SchoolHoliday", "CompetitionDistance",
               "CompetitionOpenSinceMonth", "CompetitionOpenSinceYear", "Promo2", 
               "Promo2SinceWeek", "Promo2SinceYear", "PromoInterval", 
-              "WeekDaySalesHighMedianLog", "WeekDaySalesHighMedianLog", "WeekEven")
+              "WeekDaySalesHighMedianLog", "WeekDaySalesHighMedianLog", "WeekEven",
+              "Promo2Days", "Promo2Started", "CompetitionOpenDays", "CompetitionOpen")
 
 train <- mutate(train, Promo = as.numeric(Promo))
 test <- mutate(test, Promo = as.numeric(Promo))
