@@ -1,5 +1,6 @@
 require(data.table)
 require(dplyr)
+require(lubridate)
 
 read_data <- function(file = "data/train.csv") {
     train <- fread(file, head = T, sep = ',')
@@ -29,6 +30,7 @@ clean_data <- function(data) {
     data$CompetitionOpenSinceYear[is.na(data$CompetitionOpenSinceYear)] <- -1
     data$CompetitionDistance[is.na(data$CompetitionDistance)] <- -1
     data$Date = as.Date(data$Date)
+    data <- mutate(data, Open = replace(Open, is.na(Open), "Open"))
     data
 }
 
@@ -37,14 +39,19 @@ transform_data <- function(data) {
     data$Year = as.integer(format(data$Date, "%Y"))
     data$Week = as.integer(format(data$Date, "%U"))
     data$Month = as.integer(format(data$Date, "%m"))
-    tmp <- paste(data$Promo2SinceYear, data$Promo2SinceWeek, rep("1", nrow(data)), 
-                 sep = " ")
-    data$Promo2Date <- do.call(c, 
-                               lapply(tmp, function(d) {as.Date(d, format = "%Y %U %u")}))
-    data$Promo2Days <- as.integer(difftime(data$Date, data$Promo2Date, units = "days"))
-    data <- mutate(data, Open = replace(Open, is.na(Open), "Open"))
+    
     data <- mutate(data, WeekEven = factor(Week %% 2, levels = c(0, 1), 
                                              labels = c("Even", "Odd")))
+    data <- mutate(data, CompetitionOpenSinceDate = 
+                        as.Date(ymd(paste(data$CompetitionOpenSinceYear, 
+                                          data$CompetitionOpenSinceMonth, 
+                                          rep("01", nrow(data)), sep = "-"))))
+    data <- mutate(data, Promo2Date = 
+                        as.Date(parse_date_time(paste(data$Promo2SinceYear, 
+                                                      data$Promo2SinceWeek, 
+                                                      rep("1", nrow(data)), 
+                                                      sep = "-"), "%Y %U %u")))
+    data$Promo2Days <- as.integer(difftime(data$Date, data$Promo2Date, units = "days"))
     data
 }
 
