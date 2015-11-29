@@ -85,8 +85,8 @@ save_tidy_data <- function() {
     pair <- transform_data_dataset_specific(train, test)
     train <- pair$train
     test <- pair$test
-    write.csv(data, file = "data/test_tidy.csv", row.names = F)
-    write.csv(data, file = "data/train_tidy.csv", row.names = F)
+    write.csv(train, file = "data/test_tidy.csv", row.names = F)
+    write.csv(test, file = "data/train_tidy.csv", row.names = F)
 }
 
 restore_after_load <- function(data) {
