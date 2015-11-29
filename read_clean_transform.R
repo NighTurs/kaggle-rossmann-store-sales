@@ -46,16 +46,47 @@ transform_data <- function(data) {
     data
 }
 
+transform_data_dataset_specific <- function(train, test) {
+    # WeekDaySalesHighMedian and WeekDaySalesHighMedian
+    data <- copy(train)
+    plusWeekSales <- data.table(Store = data$Store, 
+                                Date = data$Date + 7, PlusWeekSales = data$Sales)
+    minusWeekSales <- data.table(Store = data$Store,
+                                 Date = data$Date - 7, MinusWeekSales = data$Sales)
+    data <- left_join(data, plusWeekSales, by = c("Store", "Date"))
+    data <- left_join(data, minusWeekSales, by = c("Store", "Date"))
+    data <- mutate(data, PlusWeekSales = replace(PlusWeekSales, is.na(PlusWeekSales), 0),
+                   MinusWeekSales = replace(MinusWeekSales, is.na(MinusWeekSales), 0))
+    data <- mutate(data, SalesLevel = factor((PlusWeekSales == 0 | PlusWeekSales > Sales) & 
+                                                 (MinusWeekSales == 0 | MinusWeekSales > Sales), 
+                                             levels = c(T, F), labels = c("Low", "High")))
+    levelSales <- data %>% group_by(Store, DayOfWeek) %>% 
+        summarise(WeekDaySalesHighMedian = as.double(median(Sales[SalesLevel == "High" & Sales > 0])), 
+                  WeekDaySalesLowMedian = as.double(median(Sales[SalesLevel == "Low" & Sales > 0])))
+    train <- left_join(train, levelSales, by = c("Store", "DayOfWeek"))
+    test <- left_join(test, levelSales, by = c("Store", "DayOfWeek"))
+    # WeekDaySalesHighMedianLog and WeekDaySalesHighMedianLog
+    train <- mutate(train, WeekDaySalesHighMedianLog = log(WeekDaySalesHighMedian + 1), 
+                    WeekDaySalesLowMedianLog = log(WeekDaySalesLowMedian + 1))
+    test <- mutate(test, WeekDaySalesHighMedianLog = log(WeekDaySalesHighMedian + 1), 
+                    WeekDaySalesLowMedianLog = log(WeekDaySalesLowMedian + 1))
+    # LogSales for train
+    train$LogSales <- log(train$Sales + 1)
+    list(train = train, test = test)
+}
+
 save_tidy_data <- function() {
-    data <- read_data()
-    data <- clean_data(data)
-    data <- transform_data(data)
-    data$LogSales <- log(data$Sales + 1)
-    write.csv(data, file = "data/train_tidy.csv", row.names = F)
-    data <- read_data("data/test.csv")
-    data <- clean_data(data)
-    data <- transform_data(data)
+    train <- read_data()
+    train <- clean_data(train)
+    train <- transform_data(train)
+    test <- read_data("data/test.csv")
+    test <- clean_data(test)
+    test <- transform_data(test)
+    pair <- transform_data_dataset_specific(train, test)
+    train <- pair$train
+    test <- pair$test
     write.csv(data, file = "data/test_tidy.csv", row.names = F)
+    write.csv(data, file = "data/train_tidy.csv", row.names = F)
 }
 
 restore_after_load <- function(data) {
