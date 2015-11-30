@@ -70,3 +70,20 @@ test <- mutate(test, Sales = replace(Sales, Open == "Closed", 0))
 
 out <- test[, list(Id, Sales)]
 write.csv(out, file = "xgb_out.csv", row.names = F, quote = F) 
+
+
+# CV
+gtrain <- train[Open == "Open" & Sales > 0]
+dtrain <- xgb.DMatrix(data.matrix(gtrain[, features, with = F]), 
+                      label=gtrain$WeekDayPromoMedianSalesResidue,
+                      weight=gtrain$WeekDayPromoMedianSales)
+folds <- split(1:nrow(gtrain), factor(as.integer(gtrain$Date - min_date) %/% 236))
+set.seed(12)
+xgb.cv(params = param, 
+       data = dtrain, 
+       nrounds = 1000, 
+       nfold = 4, 
+       early.stop.round = 100,
+       maximize = F,
+       folds = folds,
+       feval = RMPSE)
