@@ -103,7 +103,6 @@ write.csv(arrange(test[,list(Id, Sales)], Id), file = "ts_out.csv", row.names = 
 
 good <- fread("data/rf1.csv", sep = ",")
 good <- arrange(good, Id)
-RMPSE(good$Sales, arrange(test, Id)$Sales)
 
 w <- merge(test, good, by = "Id")
 

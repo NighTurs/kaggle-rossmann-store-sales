@@ -18,16 +18,21 @@ features <- c("Store", "DayOfWeek", "Promo", "StoreType", "Assortment",
               "DayOfYear", "Year", "Week", "Month", "SchoolHoliday", "CompetitionDistance",
               "CompetitionOpenSinceMonth", "CompetitionOpenSinceYear", "Promo2", 
               "Promo2SinceWeek", "Promo2SinceYear", "PromoInterval", 
-              "WeekDaySalesHighMedianLog", "WeekDaySalesHighMedianLog", "WeekEven",
-              "Promo2Days", "Promo2Started", "CompetitionOpenDays", "CompetitionOpen",
+              "WeekEven", "Promo2Days", "Promo2Started", "CompetitionOpenDays", "CompetitionOpen",
               "StateHoliday")
+
 
 train <- mutate(train, Promo = as.numeric(Promo))
 test <- mutate(test, Promo = as.numeric(Promo))
 
-test_dates <- c(seq(as.Date(ymd("20150110")), as.Date(ymd("20150410")), by = "day"))
-train_train <- train[!(Date %in% test_dates) & Open == "Open" & Sales > 0 & Store < 100]
-train_test <- train[Date %in% test_dates & Open == "Open" & Sales > 0 & Store < 100]
+set.seed(100)
+sml <- sample(nrow(train), 20000)
+train_train <- train[-sml][Open == "Open" & Sales > 0]
+train_test <- train[sml][Open == "Open" & Sales > 0]
+
+#test_dates <- c(seq(as.Date(ymd("20150110")), as.Date(ymd("20150410")), by = "day"))
+#train_train <- train[!(Date %in% test_dates) & Open == "Open" & Sales > 0]
+#train_test <- train[Date %in% test_dates & Open == "Open" & Sales > 0]
 
 dtrain <- xgb.DMatrix(data.matrix(train_train[, features, with = F]), 
                       label=train_train$LogSales)
@@ -48,7 +53,7 @@ clf <- xgb.train(   params              = param,
                     data                = dtrain, 
                     nrounds             = 3000,
                     verbose             = 2, 
-                    early.stop.round    = 40,
+                    early.stop.round    = 100,
                     watchlist           = watchlist,
                     maximize            = F,
                     feval               = RMPSE)
