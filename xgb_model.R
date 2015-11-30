@@ -5,8 +5,9 @@ require(lubridate)
 
 RMPSE<- function(preds, dtrain) {
     labels <- getinfo(dtrain, "label")
-    elab<-exp(as.numeric(labels))-1
-    epreds<-exp(as.numeric(preds))-1
+    weight <- getinfo(dtrain, "weight")
+    elab<-exp(as.numeric(weight + labels))-1
+    epreds<-exp(as.numeric(weight + preds))-1
     err <- sqrt(mean((epreds/elab-1)^2))
     return(list(metric = "RMPSE", value = err))
 }
@@ -31,13 +32,15 @@ train_train <- train[-sml][Open == "Open" & Sales > 0]
 train_test <- train[sml][Open == "Open" & Sales > 0]
 
 #test_dates <- c(seq(as.Date(ymd("20150110")), as.Date(ymd("20150410")), by = "day"))
-#train_train <- train[!(Date %in% test_dates) & Open == "Open" & Sales > 0]
-#train_test <- train[Date %in% test_dates & Open == "Open" & Sales > 0]
+#train_train <- train[!(Date %in% test_dates) & Open == "Open" & Sales > 0 & Store < 100]
+#train_test <- train[Date %in% test_dates & Open == "Open" & Sales > 0 & Store < 100]
 
 dtrain <- xgb.DMatrix(data.matrix(train_train[, features, with = F]), 
-                      label=train_train$LogSales)
+                      label=train_train$WeekDayPromoMedianSalesResidue,
+                      weight=train_train$WeekDayPromoMedianSales)
 dval <- xgb.DMatrix(data.matrix(train_test[, features, with = F]), 
-                    label=train_test$LogSales)
+                    label=train_test$WeekDayPromoMedianSalesResidue,
+                    weight=train_test$WeekDayPromoMedianSales)
 watchlist <- list(eval = dval, train = dtrain)
 
 param <- list(  objective           = "reg:linear", 
@@ -51,7 +54,7 @@ set.seed(12)
 
 clf <- xgb.train(   params              = param, 
                     data                = dtrain, 
-                    nrounds             = 3000,
+                    nrounds             = 150,
                     verbose             = 2, 
                     early.stop.round    = 100,
                     watchlist           = watchlist,
@@ -61,7 +64,8 @@ clf <- xgb.train(   params              = param,
 test_open <- test[Open == "Open"]
 z <- predict(clf, data.matrix(test_open[, features, with = F]))
 test <- mutate(test, Sales = 0)
-test <- mutate(test, Sales = replace(Sales, Open == "Open", exp(z) - 1))
+test <- mutate(test, Sales = replace(Sales, Open == "Open", 
+                                     exp(WeekDayPromoMedianSales[Open == "Open"] + z) - 1))
 test <- mutate(test, Sales = replace(Sales, Open == "Closed", 0))
 
 out <- test[, list(Id, Sales)]

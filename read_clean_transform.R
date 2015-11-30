@@ -107,6 +107,14 @@ transform_data_dataset_specific <- function(train, test) {
                                 is.na(WeekDaySalesHighMedianLog), -1))
     # LogSales for train
     train$LogSales <- log(train$Sales + 1)
+    # WeekDayPromoMedianSales
+    feature_group <- train %>% group_by(Store, DayOfWeek, Promo) %>% 
+        summarise(WeekDayPromoMedianSales = median(as.double(LogSales)))
+    train <- left_join(train, feature_group)
+    test <- left_join(test, feature_group)
+    # WeekDayPromoMedianSalesResidue    
+    train <- mutate(train, WeekDayPromoMedianSalesResidue = 
+                        LogSales - WeekDayPromoMedianSales)
     list(train = train, test = test)
 }
 
