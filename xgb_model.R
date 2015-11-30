@@ -19,7 +19,7 @@ features <- c("Store", "DayOfWeek", "Promo", "StoreType", "Assortment",
               "DayOfYear", "Year", "Week", "Month", "SchoolHoliday", "CompetitionDistance",
               "CompetitionOpenSinceMonth", "CompetitionOpenSinceYear", "Promo2", 
               "Promo2SinceWeek", "Promo2SinceYear", "PromoInterval", 
-              "WeekEven", "Promo2Days", "Promo2Started", "CompetitionOpenDays", "CompetitionOpen",
+              "Promo2Days", "Promo2Started", "CompetitionOpenDays", "CompetitionOpen",
               "StateHoliday")
 
 
