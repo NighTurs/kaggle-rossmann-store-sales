@@ -16,11 +16,10 @@ train <- load_tidy_train()
 test <- load_tidy_test()
 
 features <- c("Store", "DayOfWeek", "Promo", "StoreType", "Assortment", 
-              "DayOfYear", "Year", "Week", "Month", "SchoolHoliday", "CompetitionDistance",
+              "Year", "Month", "SchoolHoliday", "CompetitionDistance",
               "CompetitionOpenSinceMonth", "CompetitionOpenSinceYear", "Promo2", 
               "Promo2SinceWeek", "Promo2SinceYear", "PromoInterval", 
-              "Promo2Days", "Promo2Started", "CompetitionOpenDays", "CompetitionOpen",
-              "StateHoliday")
+              "Promo2Started", "CompetitionOpen")
 
 
 train <- mutate(train, Promo = as.numeric(Promo))
@@ -54,7 +53,7 @@ set.seed(12)
 
 clf <- xgb.train(   params              = param, 
                     data                = dtrain, 
-                    nrounds             = 150,
+                    nrounds             = 500,
                     verbose             = 2, 
                     early.stop.round    = 100,
                     watchlist           = watchlist,
@@ -77,13 +76,14 @@ gtrain <- train[Open == "Open" & Sales > 0]
 dtrain <- xgb.DMatrix(data.matrix(gtrain[, features, with = F]), 
                       label=gtrain$WeekDayPromoMedianSalesResidue,
                       weight=gtrain$WeekDayPromoMedianSales)
+min_date <- min(train$Date)
 folds <- split(1:nrow(gtrain), factor(as.integer(gtrain$Date - min_date) %/% 236))
 set.seed(12)
-xgb.cv(params = param, 
+b <- xgb.cv(params = param, 
        data = dtrain, 
-       nrounds = 1000, 
+       nrounds = 3000, 
        nfold = 4, 
-       early.stop.round = 100,
+       early.stop.round = 2000,
        maximize = F,
        folds = folds,
        feval = RMPSE)
