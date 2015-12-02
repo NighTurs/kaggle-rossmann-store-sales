@@ -2,6 +2,7 @@ source("read_clean_transform.R")
 require(dplyr)
 require(xgboost)
 require(lubridate)
+require(outliers)
 
 RMPSE<- function(preds, dtrain) {
     labels <- getinfo(dtrain, "label")
@@ -16,19 +17,29 @@ train <- load_tidy_train()
 test <- load_tidy_test()
 
 features <- c("Store", "DayOfWeek", "Promo", "StoreType", "Assortment", 
-              "Year", "Month", "SchoolHoliday", "CompetitionDistance",
-              "CompetitionOpenSinceMonth", "CompetitionOpenSinceYear", "Promo2", 
-              "Promo2SinceWeek", "Promo2SinceYear", "PromoInterval", 
-              "Promo2Started", "CompetitionOpen")
+                             "DayOfYear", "Year", "Week", "Month", "SchoolHoliday", "CompetitionDistance",
+                             "CompetitionOpenSinceMonth", "CompetitionOpenSinceYear", "Promo2", 
+                           "Promo2SinceWeek", "Promo2SinceYear", "PromoInterval")
+
+#features <- c("Store", "DayOfWeek", "Promo", "StoreType", "Assortment", 
+#              "Year", "Month", "SchoolHoliday", "CompetitionDistance",
+#              "CompetitionOpenSinceMonth", "CompetitionOpenSinceYear", "Promo2", 
+#              "Promo2SinceWeek", "Promo2SinceYear", "PromoInterval", 
+#              "Promo2Started", "CompetitionOpen")
 
 
 train <- mutate(train, Promo = as.numeric(Promo))
 test <- mutate(test, Promo = as.numeric(Promo))
 
+gtrain <- train[Open == "Open" & Sales > 0]
+train_outliers <- scores(gtrain$WeekDayPromoMedianSalesResidue, 
+                         type = "chisq", prob = 0.95)
+gtrain <- gtrain[!train_outliers]
+
 set.seed(100)
-sml <- sample(nrow(train), 20000)
-train_train <- train[-sml][Open == "Open" & Sales > 0]
-train_test <- train[sml][Open == "Open" & Sales > 0]
+sml <- sample(nrow(gtrain), 20000)
+train_train <- gtrain[-sml]
+train_test <- gtrain[sml]
 
 #test_dates <- c(seq(as.Date(ymd("20150110")), as.Date(ymd("20150410")), by = "day"))
 #train_train <- train[!(Date %in% test_dates) & Open == "Open" & Sales > 0 & Store < 100]
@@ -43,9 +54,9 @@ dval <- xgb.DMatrix(data.matrix(train_test[, features, with = F]),
 watchlist <- list(eval = dval, train = dtrain)
 
 param <- list(  objective           = "reg:linear", 
-                eta                 = 0.02,
-                max_depth           = 10,
-                subsample           = 0.7,
+                eta                 = 0.01,
+                max_depth           = 8,
+                subsample           = 0.9,
                 colsample_bytree    = 0.8
 )
 
@@ -53,9 +64,9 @@ set.seed(12)
 
 clf <- xgb.train(   params              = param, 
                     data                = dtrain, 
-                    nrounds             = 500,
+                    nrounds             = 2000,
                     verbose             = 2, 
-                    early.stop.round    = 100,
+                    early.stop.round    = 50,
                     watchlist           = watchlist,
                     maximize            = F,
                     feval               = RMPSE)
@@ -72,7 +83,12 @@ write.csv(out, file = "xgb_out.csv", row.names = F, quote = F)
 
 
 # CV
+
+set.seed(12)
 gtrain <- train[Open == "Open" & Sales > 0]
+train_outliers <- scores(gtrain$WeekDayPromoMedianSalesResidue, 
+                         type = "chisq", prob = 0.95)
+gtrain <- gtrain[!train_outliers]
 dtrain <- xgb.DMatrix(data.matrix(gtrain[, features, with = F]), 
                       label=gtrain$WeekDayPromoMedianSalesResidue,
                       weight=gtrain$WeekDayPromoMedianSales)
