@@ -36,6 +36,7 @@ clean_data <- function(data) {
 
 transform_data <- function(data) {
     data$DayOfYear = as.integer(format(data$Date, "%j"))
+    data$DayOfMonth = as.integer(format(data$Date, "%d"))
     data$Year = as.integer(format(data$Date, "%Y"))
     data$Week = as.integer(format(data$Date, "%U"))
     data$Month = as.integer(format(data$Date, "%m"))
