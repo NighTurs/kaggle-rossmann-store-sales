@@ -116,6 +116,18 @@ transform_data_dataset_specific <- function(train, test) {
     # WeekDayPromoMedianSalesResidue    
     train <- mutate(train, WeekDayPromoMedianSalesResidue = 
                         LogSales - WeekDayPromoMedianSales)
+    # WeekDaySalesPromoMedianLog and WeekDaySalesNonPromoMedianLog
+    data <- copy(train)
+    promoSales <- data %>% group_by(Store, DayOfWeek) %>% 
+        summarise(WeekDaySalesPromoMedian = as.double(median(Sales[Promo == "Promo" & Sales > 0])), 
+                  WeekDaySalesNonPromoMedian = as.double(median(Sales[Promo == "None" & Sales > 0])))
+    promoSales[is.na(promoSales)] <- -1
+    train <- left_join(train, promoSales, by = c("Store", "DayOfWeek"))
+    test <- left_join(test, promoSales, by = c("Store", "DayOfWeek"))
+    train <- mutate(train, WeekDaySalesPromoMedianLog = log(WeekDaySalesPromoMedian + 1), 
+                    WeekDaySalesNonPromoMedianLog = log(WeekDaySalesNonPromoMedian + 1))
+    test <- mutate(test, WeekDaySalesPromoMedianLog = log(WeekDaySalesPromoMedian + 1), 
+                   WeekDaySalesNonPromoMedianLog = log(WeekDaySalesNonPromoMedian + 1))
     list(train = train, test = test)
 }
 
