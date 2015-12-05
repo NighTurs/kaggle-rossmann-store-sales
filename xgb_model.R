@@ -30,41 +30,40 @@ load_data <- function() {
     list(train = train, test = test)
 }
 
-train_model <- function(train) {
-    gtrain <- train[Open == "Open" & Sales > 0]
-    #train_outliers <- scores(gtrain$WeekDayPromoMedianSalesResidue, 
-    #                         type = "chisq", prob = 0.95)
-    #gtrain <- gtrain[!train_outliers]
+train_model <- function(train,
+                        eta = 0.02, 
+                        max_depth = 10, 
+                        subsample = 0.9,
+                        colsample = 0.7,
+                        nrounds = 2000,
+                        outlier_cutoff = NA) {
+    gtrain <- train[Open == "Open" & Sales > 0 & Month != 12]
     
-    #test_dates <- c(seq(as.Date(ymd("20130801")), as.Date(ymd("20130917")), by = "day"))
-    #train_train <- gtrain[!(Date %in% test_dates)]
-    #train_test <- gtrain[Date %in% test_dates & Store %in% unique(test$Store)]
+    set.seed(12)
+    if (!is.na(outlier_cutoff)) {
+        gtrain[, Outlier := scores(LogSales, type = "chisq", prob = outlier_cutoff), 
+               by = list(Store, DayOfWeek, Promo)]
+        gtrain <- gtrain[Outlier == F]
+    }
     
-    #dtrain <- xgb.DMatrix(data.matrix(train_train[, features, with = F]), 
-    #                      label=train_train$LogSales)
     dtrain <- xgb.DMatrix(data.matrix(gtrain[, features, with = F]), 
                           label=gtrain$LogSales)
-    #dval <- xgb.DMatrix(data.matrix(train_test[, features, with = F]), 
-    #                    label=train_test$LogSales)
-    #watchlist <- list(eval = dval, train = dtrain)
-    
     param <- list(  objective           = "reg:linear", 
-                    eta                 = 0.02,
-                    max_depth           = 10,
-                    subsample           = 0.9,
-                    colsample_bytree    = 0.7
+                    eta                 = eta,
+                    max_depth           = max_depth,
+                    subsample           = subsample,
+                    colsample_bytree    = colsample
     )
     
     set.seed(12)
     
     clf <- xgb.train(   params              = param, 
                         data                = dtrain, 
-                        nrounds             = 1500,
+                        nrounds             = nrounds,
                         verbose             = 2, 
-                        #early.stop.round    = 40,
-                        #watchlist           = watchlist,
                         maximize            = F,
                         feval               = RMPSE)
+    clf
 }
 
 make_predictions <- function(clf, test) {
@@ -79,13 +78,26 @@ make_predictions <- function(clf, test) {
     write.csv(out, file = "xgb_out.csv", row.names = F, quote = F) 
 }
 
-run_cv <- function(train, test, file = "cv.results.csv", eta = 0.02, max_depth = 10, subsample = 0.9) {
+run_cv <- function(train, test, file = "cv.results.csv", 
+                   eta = 0.02, 
+                   max_depth = 10, 
+                   subsample = 0.9,
+                   colsample = 0.7,
+                   n_store = NA,
+                   outlier_cutoff = NA) {
     set.seed(12)
-    smpl_stores <- sample(unique(test$Store), 100)
-    gtrain <- train[Open == "Open" & Sales > 0]
-    #train_outliers <- scores(gtrain$WeekDayPromoMedianSalesResidue, 
-    #                         type = "chisq", prob = 0.95)
-    #gtrain <- gtrain[!train_outliers]
+    if (is.na(n_store)) {
+        gtrain <- train[Open == "Open" & Sales > 0 & Month != 12]
+    } else {
+        smpl_stores <- sample(unique(test$Store), n_store)
+        gtrain <- train[Open == "Open" & Sales > 0 & Month != 12 & Store %in% smpl_stores]
+    }
+    set.seed(12)
+    if (!is.na(outlier_cutoff)) {
+        gtrain[, Outlier := scores(LogSales, type = "chisq", prob = outlier_cutoff), 
+               by = list(Store, DayOfWeek, Promo)]
+        gtrain <- gtrain[Outlier == F]
+    }
     dtrain <- xgb.DMatrix(data.matrix(gtrain[, features, with = F]), 
                           label=gtrain$LogSales)
     
@@ -96,13 +108,13 @@ run_cv <- function(train, test, file = "cv.results.csv", eta = 0.02, max_depth =
                     eta                 = eta,
                     max_depth           = max_depth,
                     subsample           = subsample,
-                    colsample_bytree    = 0.7
+                    colsample_bytree    = colsample
     )
     b <- xgb.cv(params = param, 
            data = dtrain, 
            nrounds = 5000, 
            nfold = 10, 
-           early.stop.round = 40,
+           early.stop.round = 50,
            maximize = F,
            folds = folds,
            feval = RMPSE)
