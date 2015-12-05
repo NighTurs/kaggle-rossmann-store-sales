@@ -79,7 +79,7 @@ make_predictions <- function(clf, test) {
     write.csv(out, file = "xgb_out.csv", row.names = F, quote = F) 
 }
 
-run_cv <- function(train, file = "cv.results.csv") {
+run_cv <- function(train, test, file = "cv.results.csv", eta = 0.02, max_depth = 10, subsample = 0.9) {
     set.seed(12)
     smpl_stores <- sample(unique(test$Store), 100)
     gtrain <- train[Open == "Open" & Sales > 0]
@@ -93,18 +93,18 @@ run_cv <- function(train, file = "cv.results.csv") {
     folds <- split(1:nrow(gtrain), factor(as.integer(gtrain$Date - min_date) %/% 95))
     set.seed(12)
     param <- list(  objective           = "reg:linear", 
-                    eta                 = 0.02,
-                    max_depth           = 10,
-                    subsample           = 0.9,
+                    eta                 = eta,
+                    max_depth           = max_depth,
+                    subsample           = subsample,
                     colsample_bytree    = 0.7
     )
     b <- xgb.cv(params = param, 
            data = dtrain, 
-           nrounds = 3000, 
+           nrounds = 5000, 
            nfold = 10, 
-           early.stop.round = 20,
+           early.stop.round = 40,
            maximize = F,
            folds = folds,
            feval = RMPSE)
-    write.csv(out, file = file, row.names = F, quote = F)
+    write.csv(b, file = file, row.names = F, quote = F)
 }
