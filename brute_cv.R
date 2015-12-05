@@ -1,13 +1,21 @@
 source("xgb_model.R")
 ld <- load_data()
 train <- ld$train
-test <- ldtest
+test <- ld$test
 
 run_cv(train, test, file = "~/Mount/002_10_09_07_NA.csv", 
        eta = 0.02, 
        max_depth = 10, 
        subsample = 0.9,
        colsample = 0.7, 
+       outlier_cutoff = NA)
+
+run_cv(train, test, file = "~/Mount/002_10_09_07_856_NA.csv", 
+       eta = 0.02, 
+       max_depth = 10, 
+       subsample = 0.9,
+       colsample = 0.7, 
+       n_store = 856,
        outlier_cutoff = NA)
 
 run_cv(train, test, file = "~/Mount/002_10_09_07_099.csv", 
