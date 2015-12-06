@@ -180,7 +180,7 @@ better_cv <- function(train, test, file = "cv.results.csv",
                                                nrounds             = nrounds,
                                                verbose             = 2, 
                                                watchlist           = watchlist,
-                                               early.stop.round    = 1000,
+                                               early.stop.round    = 150,
                                                maximize            = F,
                                                feval               = RMPSE))
             first <- F
