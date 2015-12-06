@@ -128,6 +128,20 @@ transform_data_dataset_specific <- function(train, test) {
                     WeekDaySalesNonPromoMedianLog = log(WeekDaySalesNonPromoMedian + 1))
     test <- mutate(test, WeekDaySalesPromoMedianLog = log(WeekDaySalesPromoMedian + 1), 
                    WeekDaySalesNonPromoMedianLog = log(WeekDaySalesNonPromoMedian + 1))
+    # Bavarian
+    byStore <- train[,.N,by = Store]
+    bavarian_store <- byStore[byStore$N == 758, Store]
+    train <- mutate(train, Bavarian = Store %in% bavarian_store)
+    test <- mutate(test, Bavarian = Store %in% bavarian_store)
+    # StoreClosedInTest
+    closed_test_store <- setdiff(unique(train$Store), unique(test$Store))
+    train <- mutate(train, StoreClosedInTest = Store %in% closed_test_store)
+    test <- mutate(test, StoreClosedInTest = Store %in% closed_test_store)
+    # WorkingOnSundays
+    work_on_sundays <- train %>% filter(DayOfWeek == 7) %>% group_by(Store) %>% 
+        summarise(WorkingOnSundays = sum(Sales > 0) > 70)
+    train <- merge(train, work_on_sundays, by = "Store")
+    test <- merge(test, work_on_sundays, by = "Store")
     list(train = train, test = test)
 }
 

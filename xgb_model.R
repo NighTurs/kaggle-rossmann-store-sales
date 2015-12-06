@@ -19,7 +19,8 @@ features <- c("Store", "DayOfWeek", "Promo", "StoreType", "Assortment",
               "CompetitionOpenSinceMonth", "CompetitionOpenSinceYear", "Promo2", 
               "Promo2SinceWeek", "Promo2SinceYear", "PromoInterval", 
               "WeekDaySalesPromoMedianLog", "WeekDaySalesNonPromoMedianLog",
-              "DayOfYear", "CompetitionOpen")
+              "DayOfYear", "CompetitionOpen", "WorkingOnSundays", "StoreClosedInTest",
+              "Bavarian")
 
 load_data <- function() {
     train <- load_tidy_train()
@@ -57,13 +58,12 @@ train_model <- function(train,
     
     set.seed(12)
     
-    capture.output(clf <- xgb.train(
-                        params              = param, 
-                        data                = dtrain, 
-                        nrounds             = nrounds,
-                        verbose             = 2, 
-                        maximize            = F,
-                        feval               = RMPSE))
+    clf <- xgb.train(params              = param, 
+                     data                = dtrain, 
+                     nrounds             = nrounds,
+                     verbose             = 2, 
+                     maximize            = F,
+                     feval               = RMPSE)
 }
 
 make_predictions <- function(clf, test) {
