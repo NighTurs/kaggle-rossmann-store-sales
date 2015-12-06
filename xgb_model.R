@@ -201,10 +201,12 @@ better_cv <- function(train, test, file = "cv.results.csv",
         print(res_cur)
         res <- rbind(res, res_cur)
     }
-    res %>% group_by(iter) %>% summarise(train_mean = mean(train), train_min = min(train),
+    b <- res %>% group_by(iter) %>% summarise(train_mean = mean(train), train_min = min(train),
                                          train_max = max(train), train_sd = sd(train),
                                          test_mean = mean(eval), test_min = min(eval),
                                          test_max = max(eval), test_sd = sd(eval), n = n())
+    write.csv(b, file = file, row.names = F, quote = F)
+    b
 }
 
 suggest_iterations <- function(res) {
