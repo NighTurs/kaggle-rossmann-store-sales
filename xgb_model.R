@@ -57,13 +57,13 @@ train_model <- function(train,
     
     set.seed(12)
     
-    clf <- xgb.train(   params              = param, 
+    capture.output(clf <- xgb.train(
+                        params              = param, 
                         data                = dtrain, 
                         nrounds             = nrounds,
                         verbose             = 2, 
                         maximize            = F,
-                        feval               = RMPSE)
-    clf
+                        feval               = RMPSE))
 }
 
 make_predictions <- function(clf, test) {
@@ -119,4 +119,94 @@ run_cv <- function(train, test, file = "cv.results.csv",
            folds = folds,
            feval = RMPSE)
     write.csv(b, file = file, row.names = F, quote = F)
+}
+
+better_cv <- function(train, test, file = "cv.results.csv", 
+                      eta = 0.02, 
+                      max_depth = 10, 
+                      subsample = 0.9,
+                      colsample = 0.7,
+                      nrounds = 5000,
+                      n_store = NA,
+                      outlier_cutoff = NA) {
+    set.seed(12)
+    if (is.na(n_store)) {
+        gtrain <- train[Open == "Open" & Sales > 0 & Month != 12]
+    } else {
+        smpl_stores <- sample(unique(test$Store), n_store)
+        gtrain <- train[Open == "Open" & Sales > 0 & Month != 12 & Store %in% smpl_stores]
+    }
+    set.seed(12)
+    if (!is.na(outlier_cutoff)) {
+        gtrain[, Outlier := scores(LogSales, type = "chisq", prob = outlier_cutoff), 
+               by = list(Store, DayOfWeek, Promo)]
+    } else {
+        gtrain[, Outlier:=F]
+    }
+    
+    folds <- list(
+         seq(as.Date("2014-08-25"), as.Date("2014-09-17"), "day"),
+         seq(as.Date("2013-08-01"), as.Date("2013-08-24"), "day"),
+         seq(as.Date("2013-08-25"), as.Date("2013-09-17"), "day"),
+         seq(as.Date("2014-08-01"), as.Date("2014-08-24"), "day"))
+    
+    # First fold is easiest one, so we will keep number of rounds from it
+    first <- T
+    
+    res <- data.table(iter = -1, eval = 0, train = 0)
+    for (i in 1:length(folds)) {
+        print(paste("processing fold", i, sep = " "))
+        test_dates <- folds[[i]]
+        train_train <- gtrain[!(Date %in% test_dates) & Outlier == F]
+        train_test <- gtrain[Date %in% test_dates]
+        dtrain <- xgb.DMatrix(data.matrix(train_train[, features, with = F]), 
+                                          label=train_train$LogSales)
+        dval <- xgb.DMatrix(data.matrix(train_test[, features, with = F]), 
+                                          label=train_test$LogSales)
+        watchlist <- list(eval = dval, train = dtrain)
+        param <- list(  objective           = "reg:linear", 
+                        eta                 = eta,
+                        max_depth           = max_depth,
+                        subsample           = subsample,
+                        colsample_bytree    = colsample
+        )
+        
+        set.seed(12)
+        
+        if (first) {
+            output <- capture.output(
+                           clf <- xgb.train(   params              = param, 
+                                               data                = dtrain, 
+                                               nrounds             = nrounds,
+                                               verbose             = 2, 
+                                               watchlist           = watchlist,
+                                               early.stop.round    = 50,
+                                               maximize            = F,
+                                               feval               = RMPSE))
+            first <- F
+        } else {
+            output <- capture.output(
+                clf <- xgb.train(   params              = param, 
+                                    data                = dtrain, 
+                                    nrounds             = max(res_cur$iter) + 1,
+                                    verbose             = 2, 
+                                    watchlist           = watchlist,
+                                    maximize            = F,
+                                    feval               = RMPSE))
+        }
+        chrs <- tstrsplit(output[seq(2, length(output), 2)], "[\t:]", fixed=F)
+        res_cur <- data.table(iter = as.integer(gsub("(\\[|\\])", "", chrs[[1]])), 
+                         eval = as.numeric(chrs[[3]]), 
+                         train = as.numeric(chrs[[5]]))
+        print(res_cur)
+        res <- rbind(res, res_cur)
+    }
+    res %>% group_by(iter) %>% summarise(train_mean = mean(train), train_min = min(train),
+                                         train_max = max(train), train_sd = sd(train),
+                                         test_mean = mean(eval), test_min = min(eval),
+                                         test_max = max(eval), test_sd = sd(eval), n = n())
+}
+
+suggest_iterations <- function(res) {
+    tail(res[1:which.min(res$test_mean[-1])], 10)
 }
