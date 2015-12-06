@@ -19,8 +19,7 @@ features <- c("Store", "DayOfWeek", "Promo", "StoreType", "Assortment",
               "CompetitionOpenSinceMonth", "CompetitionOpenSinceYear", "Promo2", 
               "Promo2SinceWeek", "Promo2SinceYear", "PromoInterval", 
               "WeekDaySalesPromoMedianLog", "WeekDaySalesNonPromoMedianLog",
-              "DayOfYear", "CompetitionOpen", "WorkingOnSundays", "StoreClosedInTest",
-              "Bavarian")
+              "DayOfYear", "CompetitionOpen")
 
 load_data <- function() {
     train <- load_tidy_train()
@@ -83,6 +82,7 @@ run_cv <- function(train, test, file = "cv.results.csv",
                    max_depth = 10, 
                    subsample = 0.9,
                    colsample = 0.7,
+                   min_child_weight = 1,
                    n_store = NA,
                    outlier_cutoff = NA) {
     set.seed(12)
@@ -108,17 +108,19 @@ run_cv <- function(train, test, file = "cv.results.csv",
                     eta                 = eta,
                     max_depth           = max_depth,
                     subsample           = subsample,
-                    colsample_bytree    = colsample
+                    colsample_bytree    = colsample,
+                    min_child_weight    = min_child_weight
     )
     b <- xgb.cv(params = param, 
            data = dtrain, 
-           nrounds = 5000, 
+           nrounds = 10000, 
            nfold = 10, 
            early.stop.round = 50,
            maximize = F,
            folds = folds,
            feval = RMPSE)
     write.csv(b, file = file, row.names = F, quote = F)
+    b
 }
 
 better_cv <- function(train, test, file = "cv.results.csv", 
