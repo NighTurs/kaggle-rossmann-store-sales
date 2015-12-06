@@ -158,7 +158,7 @@ better_cv <- function(train, test, file = "cv.results.csv",
         print(paste("processing fold", i, sep = " "))
         test_dates <- folds[[i]]
         train_train <- gtrain[!(Date %in% test_dates) & Outlier == F]
-        train_test <- gtrain[Date %in% test_dates]
+        train_test <- gtrain[Date %in% test_dates & Store %in% unique(test$Store)]
         dtrain <- xgb.DMatrix(data.matrix(train_train[, features, with = F]), 
                                           label=train_train$LogSales)
         dval <- xgb.DMatrix(data.matrix(train_test[, features, with = F]), 
@@ -180,7 +180,7 @@ better_cv <- function(train, test, file = "cv.results.csv",
                                                nrounds             = nrounds,
                                                verbose             = 2, 
                                                watchlist           = watchlist,
-                                               early.stop.round    = 50,
+                                               early.stop.round    = 1000,
                                                maximize            = F,
                                                feval               = RMPSE))
             first <- F
