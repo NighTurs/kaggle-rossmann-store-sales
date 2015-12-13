@@ -65,7 +65,7 @@ train_model <- function(train,
                      feval               = RMPSE)
 }
 
-make_predictions <- function(clf, test) {
+make_predictions <- function(clf, test, file = "xgb_out.csv") {
     test_open <- test[Open == "Open"]
     z <- predict(clf, data.matrix(test_open[, features, with = F]))
     test <- mutate(test, Sales = 0)
@@ -74,7 +74,7 @@ make_predictions <- function(clf, test) {
     test <- mutate(test, Sales = replace(Sales, Open == "Closed", 0))
     
     out <- test[, list(Id, Sales)]
-    write.csv(out, file = "xgb_out.csv", row.names = F, quote = F) 
+    write.csv(out, file = file, row.names = F, quote = F) 
 }
 
 run_cv <- function(train, test, file = "cv.results.csv", 
