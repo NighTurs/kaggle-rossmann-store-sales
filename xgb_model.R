@@ -36,10 +36,11 @@ train_model <- function(train,
                         subsample = 0.9,
                         colsample = 0.7,
                         nrounds = 2000,
+                        seed = 12,
                         outlier_cutoff = NA) {
     gtrain <- train[Open == "Open" & Sales > 0 & Month != 12]
     
-    set.seed(12)
+    set.seed(seed)
     if (!is.na(outlier_cutoff)) {
         gtrain[, Outlier := scores(LogSales, type = "chisq", prob = outlier_cutoff), 
                by = list(Store, DayOfWeek, Promo)]
