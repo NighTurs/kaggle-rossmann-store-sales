@@ -56,7 +56,7 @@ train_model <- function(train,
                     colsample_bytree    = colsample
     )
     
-    set.seed(12)
+    set.seed(seed)
     
     clf <- xgb.train(params              = param, 
                      data                = dtrain, 
