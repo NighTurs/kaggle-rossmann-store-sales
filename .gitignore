@@ -5,4 +5,7 @@
 
 #Project specific
 exploring.html
-data
+data/*
+docs/*
+*.iml
+!data/rf1.csv
